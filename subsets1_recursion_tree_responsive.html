@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subsets I — Recursion Tree</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0A0F;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:12px;font-family:'Courier New',monospace}
+#wrap{width:100%;max-width:860px}
+
+.hd{background:#0D1117;border-radius:14px 14px 0 0;padding:9px 14px;border:1px solid #21262D;border-bottom:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.htxt{font-size:11px;color:#484F58;flex:1;text-align:center;letter-spacing:.04em;min-width:120px}
+.hbadge{font-size:10px;padding:2px 10px;border-radius:10px;font-weight:700;letter-spacing:.06em;transition:all .3s;white-space:nowrap}
+.hb-c   {background:#0A2D1A;color:#56D364;border:1px solid #196C3C}
+.hb-p   {background:#0A2538;color:#58A6FF;border:1px solid #185FA5}
+.hb-b   {background:#1A0A2D;color:#C46BFF;border:1px solid #3A1A5A}
+.hb-done{background:#0A2D2D;color:#6BFFFF;border:1px solid #1A5A5A}
+
+.screen{background:#0D1117;border:1px solid #21262D;display:flex;flex-direction:column}
+
+/* Two-column on wide, stacked on narrow */
+.panels{display:grid;grid-template-columns:240px 1fr;min-height:460px}
+@media(max-width:600px){
+  .panels{grid-template-columns:1fr;min-height:unset}
+  .dpan{border-right:none!important;border-bottom:1px solid #1E1E2E}
+}
+
+.dpan{border-right:1px solid #1E1E2E;padding:12px 14px;display:flex;flex-direction:column;gap:0}
+.dpan-title{font-size:9px;color:#484F58;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+.idx-row{display:flex;gap:7px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.idx-label{font-size:10px;color:#484F58}
+.idx-box{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1.5px solid #30363D;background:#161B22;color:#484F58;transition:all .25s;flex-shrink:0}
+.idx-box.cur {border-color:#F0883E;background:#2A1500;color:#F0883E}
+.idx-box.used{border-color:#196C3C;background:#0A2018;color:#56D364}
+
+.path-track{background:#0A0E14;border:1px solid #1E1E2E;border-radius:8px;padding:7px 10px;margin-bottom:8px}
+.pt-label{font-size:9px;color:#484F58;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.pt-val{font-size:13px;color:#F0883E;font-weight:700;min-height:17px;transition:all .2s;word-break:break-all}
+
+.dcard{border-radius:8px;padding:8px 11px;border:1px solid #21262D;background:#161B22;margin-bottom:8px;transition:all .3s}
+.dcard.active{border-color:#F0883E;background:#1A0D00}
+.dc-step{font-size:9px;color:#484F58;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+.dc-title{font-size:12px;color:#CDD9E5;font-weight:700;line-height:1.5}
+.dc-title.pick   {color:#56D364}
+.dc-title.collect{color:#58A6FF}
+.dc-title.back   {color:#C46BFF}
+.dc-why{font-size:10px;color:#8B949E;margin-top:3px;line-height:1.5}
+
+.coll-wrap{background:#0A1810;border:1px solid #1A3A1A;border-radius:8px;padding:7px 10px;margin-top:auto}
+.coll-label{font-size:9px;color:#196C3C;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.coll-pills{display:flex;flex-wrap:wrap;gap:4px;min-height:20px}
+.cpill{font-size:10px;padding:2px 7px;border-radius:10px;background:#0A2D1A;color:#56D364;border:1px solid #196C3C;animation:popin .2s ease}
+@keyframes popin{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+.tpan{padding:8px 4px;overflow:hidden}
+.tpan svg{display:block;width:100%;height:auto}
+
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:7px 14px;border-top:1px solid #1E1E2E;background:#0A0A0F}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#484F58}
+
+.msgbar{background:#0A0E14;border-top:1px solid #1E1E2E;padding:7px 14px;font-size:11px;color:#8B949E;min-height:34px;line-height:1.6;display:flex;align-items:center;gap:7px}
+.mi{font-size:14px;flex-shrink:0}
+
+.ctrl{background:#161B22;border-radius:0 0 14px 14px;border:1px solid #21262D;border-top:none;padding:8px 12px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cbtn{padding:6px 12px;border-radius:16px;border:1px solid #30363D;background:#21262D;color:#CDD9E5;font-size:11px;font-family:'Courier New',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cbtn:hover:not([disabled]){background:#30363D}
+.cbtn[disabled]{opacity:.3;cursor:not-allowed}
+.cbtn.nx{background:#196C3C;color:#56D364;border-color:#196C3C}
+.cbtn.nx:hover:not([disabled]){background:#1E8A4C}
+.cbtn.ab{background:#1A3A5A;color:#58A6FF;border-color:#1A3A5A}
+.pbar{flex:1;min-width:60px;height:3px;background:#21262D;border-radius:3px;overflow:hidden}
+.pbar-fill{height:100%;background:linear-gradient(90deg,#56D364,#58A6FF);border-radius:3px;transition:width .3s}
+.scnt{font-size:10px;color:#484F58;min-width:44px;text-align:right;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="hd">
+    <div class="dot" style="background:#FF5F56"></div>
+    <div class="dot" style="background:#FFBD2E"></div>
+    <div class="dot" style="background:#27C93F"></div>
+    <span class="htxt">nums=[1,2,3] · All Subsets (Subsets I)</span>
+    <span class="hbadge hb-c" id="hbadge">START</span>
+  </div>
+
+  <div class="screen">
+    <div class="panels">
+
+      <!-- LEFT PANEL -->
+      <div class="dpan">
+        <div class="dpan-title">Decision at each step</div>
+        <div class="idx-row">
+          <span class="idx-label">nums[]:</span>
+          <div class="idx-box" id="ib0">1</div>
+          <div class="idx-box" id="ib1">2</div>
+          <div class="idx-box" id="ib2">3</div>
+        </div>
+        <div class="path-track">
+          <div class="pt-label">current path</div>
+          <div class="pt-val" id="ptval">[ ]</div>
+        </div>
+        <div class="dcard active" id="dcard">
+          <div class="dc-step" id="dc-step">Step 0</div>
+          <div class="dc-title" id="dc-title">Shuru karte hain</div>
+          <div class="dc-why"  id="dc-why">start=0, path=[ ]</div>
+        </div>
+        <div class="coll-wrap">
+          <div class="coll-label">Collected subsets</div>
+          <div class="coll-pills" id="collpills"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: responsive SVG tree -->
+      <div class="tpan">
+        <svg id="rtsvg" viewBox="0 0 540 470" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- level labels -->
+          <text x="4" y="50"  font-size="9" fill="#2A2A3A" font-family="'Courier New',monospace">i=0</text>
+          <text x="4" y="160" font-size="9" fill="#2A2A3A" font-family="'Courier New',monospace">i=1</text>
+          <text x="4" y="272" font-size="9" fill="#2A2A3A" font-family="'Courier New',monospace">i=2</text>
+          <text x="4" y="398" font-size="9" fill="#2A2A3A" font-family="'Courier New',monospace">i=n</text>
+
+          <!-- ── EDGES L0→L1 ── -->
+          <line id="e01" x1="270" y1="68" x2="132" y2="145" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el01" x="184" y="102" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">pick 1</text>
+          <line id="e02" x1="270" y1="68" x2="408" y2="145" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el02" x="356" y="102" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">skip 1</text>
+
+          <!-- ── EDGES L1→L2 ── -->
+          <line id="e13" x1="132" y1="178" x2="66"  y2="255" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el13" x="82"  y="212" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">pick 2</text>
+          <line id="e14" x1="132" y1="178" x2="198" y2="255" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el14" x="182" y="212" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">skip 2</text>
+          <line id="e25" x1="408" y1="178" x2="342" y2="255" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el25" x="356" y="212" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">pick 2</text>
+          <line id="e26" x1="408" y1="178" x2="474" y2="255" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el26" x="460" y="212" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">skip 2</text>
+
+          <!-- ── EDGES L2→L3 ── -->
+          <line id="e37"  x1="66"  y1="288" x2="36"  y2="372" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el37"  x="34"  y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">p3</text>
+          <line id="e38"  x1="66"  y1="288" x2="102" y2="372" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el38"  x="100" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">s3</text>
+          <line id="e49"  x1="198" y1="288" x2="168" y2="372" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el49"  x="166" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">p3</text>
+          <line id="e410" x1="198" y1="288" x2="234" y2="372" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el410" x="232" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">s3</text>
+          <line id="e511" x1="342" y1="288" x2="306" y2="372" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el511" x="304" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">p3</text>
+          <line id="e512" x1="342" y1="288" x2="372" y2="372" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el512" x="372" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">s3</text>
+          <line id="e613" x1="474" y1="288" x2="440" y2="372" stroke="#1E1E2E" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text id="el613" x="438" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">p3</text>
+          <line id="e614" x1="474" y1="288" x2="506" y2="372" stroke="#1E1E2E" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr)"/>
+          <text id="el614" x="506" y="326" font-size="9" fill="#1E1E2E" font-family="'Courier New',monospace" text-anchor="middle">s3</text>
+
+          <!-- ── NODES L0 ── -->
+          <g id="ng0"><rect id="nr0" x="230" y="35" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt0" x="270" y="52" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[ ]</text></g>
+          <!-- ── NODES L1 ── -->
+          <g id="ng1"><rect id="nr1" x="92"  y="145" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt1" x="132" y="162" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1]</text></g>
+          <g id="ng2"><rect id="nr2" x="368" y="145" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt2" x="408" y="162" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[ ]</text></g>
+          <!-- ── NODES L2 ── -->
+          <g id="ng3"><rect id="nr3" x="26"  y="257" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt3" x="66"  y="274" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1,2]</text></g>
+          <g id="ng4"><rect id="nr4" x="158" y="257" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt4" x="198" y="274" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1]</text></g>
+          <g id="ng5"><rect id="nr5" x="302" y="257" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt5" x="342" y="274" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[2]</text></g>
+          <g id="ng6"><rect id="nr6" x="434" y="257" width="80" height="30" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1.5"/><text id="nt6" x="474" y="274" font-size="11" fill="#CDD9E5" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[ ]</text></g>
+          <!-- ── LEAVES L3 ── -->
+          <g id="ng7"> <rect id="nr7"  x="8"   y="374" width="58" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt7"  x="37"  y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1,2,3]</text></g>
+          <g id="ng8"> <rect id="nr8"  x="74"  y="374" width="56" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt8"  x="102" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1,2]</text></g>
+          <g id="ng9"> <rect id="nr9"  x="140" y="374" width="56" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt9"  x="168" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1,3]</text></g>
+          <g id="ng10"><rect id="nr10" x="206" y="374" width="50" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt10" x="231" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[1]</text></g>
+          <g id="ng11"><rect id="nr11" x="270" y="374" width="56" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt11" x="298" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[2,3]</text></g>
+          <g id="ng12"><rect id="nr12" x="340" y="374" width="50" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt12" x="365" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[2]</text></g>
+          <g id="ng13"><rect id="nr13" x="412" y="374" width="50" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt13" x="437" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[3]</text></g>
+          <g id="ng14"><rect id="nr14" x="474" y="374" width="50" height="24" rx="6" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/><text id="nt14" x="499" y="388" font-size="10" fill="#3FB568" font-family="'Courier New',monospace" text-anchor="middle" dominant-baseline="central">[ ]</text></g>
+
+          <text x="4" y="448" font-size="9" fill="#2A2A3A" font-family="'Courier New',monospace">p3 = pick 3  |  s3 = skip 3</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="leg-item"><svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke="#56D364" stroke-width="2"/></svg>pick</div>
+      <div class="leg-item"><svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke="#484F58" stroke-width="1.5" stroke-dasharray="4,3"/></svg>skip</div>
+      <div class="leg-item"><svg width="12" height="12"><rect x="0" y="0" width="12" height="12" rx="3" fill="#2A1500" stroke="#F0883E" stroke-width="1.5"/></svg>current</div>
+      <div class="leg-item"><svg width="12" height="12"><rect x="0" y="0" width="12" height="12" rx="3" fill="#0A2018" stroke="#56D364" stroke-width="1.5"/></svg>in path</div>
+      <div class="leg-item"><svg width="12" height="12"><rect x="0" y="0" width="12" height="12" rx="3" fill="#091510" stroke="#1A5A2A" stroke-width="1.5"/></svg>collected</div>
+    </div>
+
+    <div class="msgbar">
+      <span class="mi" id="msgicon">▶</span>
+      <span id="msg">Next press karo — tree grow karegi, ek decision at a time.</span>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <button class="cbtn" id="pb" onclick="go(-1)" disabled>← prev</button>
+    <button class="cbtn ab" id="ab" onclick="autop()">▶ auto</button>
+    <button class="cbtn nx" id="nb" onclick="go(1)">next →</button>
+    <div class="pbar"><div class="pbar-fill" id="pf" style="width:0%"></div></div>
+    <span class="scnt" id="sc">0 / 14</span>
+    <button class="cbtn" onclick="reset()" style="padding:5px 10px">↺</button>
+  </div>
+</div>
+
+<script>
+(function(){
+const S=[
+  {badge:{c:'hb-c',t:'START'},
+   nodes:{0:'cur'},edges:{},idx:{},path:'[ ]',
+   dc:{step:'Step 0',cls:'',title:'Root — collect [ ]',why:'path=[ ], start=0  |  Empty set is ALWAYS valid.'},
+   msg:{i:'▶',t:'Root call. path=[ ]. First action: collect [ ]. Empty subset hamesha valid hota hai.'},
+   addcoll:'[ ]'},
+
+  {badge:{c:'hb-p',t:'PICK 1'},
+   nodes:{0:'path',1:'cur'},edges:{e01:'a',el01:'a'},idx:{0:'cur'},path:'[1]',
+   dc:{step:'Step 1',cls:'pick',title:'pick nums[0]=1',why:'i=0. Uthao 1 → path=[1]. Left branch. Recurse into i=1.'},
+   msg:{i:'🟢',t:'Pehla choice — uthao 1. path=[1]. Left branch. Recurse into solve(i=1).'},
+   addcoll:'[1]'},
+
+  {badge:{c:'hb-p',t:'PICK 2'},
+   nodes:{0:'path',1:'path',3:'cur'},edges:{e01:'a',e13:'a',el01:'a',el13:'a'},idx:{0:'u',1:'cur'},path:'[1,2]',
+   dc:{step:'Step 2',cls:'pick',title:'pick nums[1]=2',why:'i=1. Uthao 2 → path=[1,2]. Recurse into i=2.'},
+   msg:{i:'🟢',t:'i=1, pick 2. path=[1,2]. Ek aur level deep — solve(i=2).'},
+   addcoll:'[1,2]'},
+
+  {badge:{c:'hb-p',t:'PICK 3'},
+   nodes:{0:'path',1:'path',3:'path',7:'cur'},edges:{e01:'a',e13:'a',e37:'a',el01:'a',el13:'a',el37:'a'},idx:{0:'u',1:'u',2:'cur'},path:'[1,2,3]',
+   dc:{step:'Step 3',cls:'pick',title:'pick nums[2]=3',why:'i=2. Uthao 3 → path=[1,2,3]. Next: i=n.'},
+   msg:{i:'🟢',t:'i=2, pick 3. path=[1,2,3]. Deepest level. Recurse into solve(i=3).'},
+   addcoll:'[1,2,3]'},
+
+  {badge:{c:'hb-c',t:'COLLECT'},
+   nodes:{0:'path',1:'path',3:'path',7:'done'},edges:{e01:'a',e13:'a',e37:'d',el01:'a',el13:'a'},idx:{0:'u',1:'u',2:'u'},path:'[1,2,3]',
+   dc:{step:'Step 4',cls:'collect',title:'i==n → COLLECT [1,2,3]',why:'i=3=n. Loop nahi chala. Collect. Return. Pop 3.'},
+   msg:{i:'🔵',t:'i==n. Koi choice nahi. Collect [1,2,3]. Return. Backtrack → pop 3.'}},
+
+  {badge:{c:'hb-p',t:'SKIP 3'},
+   nodes:{0:'path',1:'path',3:'cur',8:'vis'},edges:{e01:'a',e13:'a',e38:'a',el01:'a',el13:'a',el38:'a'},idx:{0:'u',1:'u'},path:'[1,2]',
+   dc:{step:'Step 5',cls:'collect',title:'skip 3 → collect [1,2]',why:'i=2, skip branch. path=[1,2]. i=n → collect.'},
+   msg:{i:'🔵',t:'Back at [1,2]. Right branch — skip 3. path=[1,2]. Collect [1,2]. Return. Pop 2.'},
+   addcoll:'[1,2]'},
+
+  {badge:{c:'hb-p',t:'PICK 3'},
+   nodes:{0:'path',1:'path',4:'cur',9:'vis'},edges:{e01:'a',e14:'a',e49:'a',el01:'a',el14:'a',el49:'a'},idx:{0:'u',1:'cur',2:'cur'},path:'[1,3]',
+   dc:{step:'Step 6',cls:'pick',title:'skip 2 → pick 3 → [1,3]',why:'Back at [1]. Skip 2 → pick 3 → [1,3]. Collect.'},
+   msg:{i:'🟢',t:'Back at [1]. Skip 2 (right). i=2, pick 3 → [1,3]. Collect [1,3]. Return. Pop 3.'},
+   addcoll:'[1,3]'},
+
+  {badge:{c:'hb-p',t:'SKIP 3'},
+   nodes:{0:'path',1:'path',4:'cur',10:'vis'},edges:{e01:'a',e14:'a',e410:'a',el01:'a',el14:'a',el410:'a'},idx:{0:'u'},path:'[1]',
+   dc:{step:'Step 7',cls:'collect',title:'skip 2, skip 3 → collect [1]',why:'N4 node. Skip 3 branch. Collect [1]. Pop 1.'},
+   msg:{i:'🔵',t:'Skip 2, skip 3. path=[1]. Collect [1]. Return. Backtrack → pop 1.'},
+   addcoll:'[1]'},
+
+  {badge:{c:'hb-p',t:'SKIP 1'},
+   nodes:{0:'cur',2:'vis'},edges:{e02:'a',el02:'a'},idx:{},path:'[ ]',
+   dc:{step:'Step 8',cls:'pick',title:'skip nums[0]=1 → right subtree',why:'Back at root. Skip 1 branch. path=[ ]. Explore WITHOUT 1.'},
+   msg:{i:'🟢',t:'Back at root [ ]. Skip 1 — right branch. path=[ ]. Now explore without picking 1.'}},
+
+  {badge:{c:'hb-p',t:'PICK 2'},
+   nodes:{0:'path',2:'cur',5:'vis'},edges:{e02:'a',e25:'a',el02:'a',el25:'a'},idx:{1:'cur'},path:'[2]',
+   dc:{step:'Step 9',cls:'pick',title:'pick nums[1]=2',why:'i=1, pick 2 → [2]. Recurse into i=2.'},
+   msg:{i:'🟢',t:'Skip-1 branch. i=1, pick 2 → path=[2]. Recurse into solve(i=2).'},
+   addcoll:'[2]'},
+
+  {badge:{c:'hb-p',t:'PICK 3'},
+   nodes:{0:'path',2:'path',5:'cur',11:'vis'},edges:{e02:'a',e25:'a',e511:'a',el02:'a',el25:'a',el511:'a'},idx:{1:'u',2:'cur'},path:'[2,3]',
+   dc:{step:'Step 10',cls:'pick',title:'pick nums[2]=3 → [2,3]',why:'i=2, pick 3 → [2,3]. i=n → collect.'},
+   msg:{i:'🟢',t:'i=2, pick 3 → path=[2,3]. Collect [2,3]. Return. Pop 3.'},
+   addcoll:'[2,3]'},
+
+  {badge:{c:'hb-c',t:'COLLECT'},
+   nodes:{0:'path',2:'path',5:'cur',12:'vis'},edges:{e02:'a',e25:'a',e512:'a',el02:'a',el25:'a',el512:'a'},idx:{1:'u'},path:'[2]',
+   dc:{step:'Step 11',cls:'collect',title:'skip 3 → collect [2]',why:'Skip 3 branch at [2]. Collect [2]. Pop 2.'},
+   msg:{i:'🔵',t:'Back at [2]. Skip 3. Collect [2]. Return. Pop 2.'},
+   addcoll:'[2]'},
+
+  {badge:{c:'hb-p',t:'PICK 3'},
+   nodes:{0:'path',2:'cur',6:'vis',13:'vis'},edges:{e02:'a',e26:'a',e613:'a',el02:'a',el26:'a',el613:'a'},idx:{2:'cur'},path:'[3]',
+   dc:{step:'Step 12',cls:'pick',title:'skip 2 → pick 3 → [3]',why:'Back at []. Skip 2 → pick 3 → [3]. Collect.'},
+   msg:{i:'🟢',t:'Back at []. Skip 2. i=2, pick 3 → [3]. Collect [3]. Return. Pop 3.'},
+   addcoll:'[3]'},
+
+  {badge:{c:'hb-c',t:'COLLECT'},
+   nodes:{0:'path',2:'cur',6:'vis',14:'vis'},edges:{e02:'a',e26:'a',e614:'a',el02:'a',el26:'a',el614:'a'},idx:{},path:'[ ]',
+   dc:{step:'Step 13',cls:'collect',title:'skip 2, skip 3 → collect [ ]',why:'Skip both. path=[ ]. Collect [ ]. Done!'},
+   msg:{i:'🔵',t:'Skip 2, skip 3. path=[ ]. Collect [ ]. All 8 subsets collected!'},
+   addcoll:'[ ]'},
+
+  {badge:{c:'hb-done',t:'DONE ✅'},
+   nodes:{0:'done',1:'done',2:'done',3:'done',4:'done',5:'done',6:'done',7:'done',8:'done',9:'done',10:'done',11:'done',12:'done',13:'done',14:'done'},
+   edges:{e01:'d',e02:'d',e13:'d',e14:'d',e25:'d',e26:'d',e37:'d',e38:'d',e49:'d',e410:'d',e511:'d',e512:'d',e613:'d',e614:'d',el01:'d',el02:'d',el13:'d',el14:'d',el25:'d',el26:'d',el37:'d',el38:'d',el49:'d',el410:'d',el511:'d',el512:'d',el613:'d',el614:'d'},
+   idx:{},path:'—',
+   dc:{step:'Complete',cls:'collect',title:'8 subsets. Ek bhi miss nahi. ✅',why:'"Uthao ya chhodo" — yahi ek sawaal — yeh poora tree ban gaya.'},
+   msg:{i:'✅',t:'8 unique subsets. Har node pe sirf ek sawaal — uthao ya chhodo? Wahi sawaal — yeh poora tree hai.'},
+   final:true},
+];
+
+const ALL_E=['e01','e02','e13','e14','e25','e26','e37','e38','e49','e410','e511','e512','e613','e614','el01','el02','el13','el14','el25','el26','el37','el38','el49','el410','el511','el512','el613','el614'];
+
+let cur=0,collected=[],autoTimer=null;
+const TOT=S.length-1;
+
+function nSty(s){
+  return({cur:{f:'#2A1500',s:'#F0883E',sw:2.5,t:'#F0883E'},path:{f:'#0A1E12',s:'#256A35',sw:1.5,t:'#9FE1CB'},done:{f:'#091510',s:'#1A5A2A',sw:1.5,t:'#56D364'},vis:{f:'#091510',s:'#1A5A2A',sw:1.5,t:'#56D364'},def:{f:'#161B22',s:'#30363D',sw:1,t:'#CDD9E5'}}[s]||{f:'#161B22',s:'#30363D',sw:1,t:'#CDD9E5'});
+}
+function eSty(s){
+  return s==='a'?{s:'#56D364',sw:2.5,f:'#56D364'}:s==='d'?{s:'#2A5F3C',sw:1.5,f:'#2A5F3C'}:null;
+}
+
+function render(){
+  const st=S[cur];
+  const b=document.getElementById('hbadge');
+  b.textContent=st.badge.t;b.className='hbadge '+st.badge.c;
+  for(let i=0;i<=14;i++){
+    const nr=document.getElementById('nr'+i),nt=document.getElementById('nt'+i);
+    if(!nr||!nt)continue;
+    const sty=nSty(st.nodes[i]||'def');
+    nr.setAttribute('fill',sty.f);nr.setAttribute('stroke',sty.s);nr.setAttribute('stroke-width',sty.sw);
+    nt.setAttribute('fill',sty.t);
+  }
+  ALL_E.forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const state=st.edges[id],isT=el.tagName==='text';
+    if(!state){if(isT)el.setAttribute('fill','#1E1E2E');else{el.setAttribute('stroke','#1E1E2E');el.setAttribute('stroke-width','1');}return;}
+    const sty=eSty(state);if(!sty)return;
+    if(isT)el.setAttribute('fill',sty.f);else{el.setAttribute('stroke',sty.s);el.setAttribute('stroke-width',sty.sw);}
+  });
+  [0,1,2].forEach(i=>{
+    const el=document.getElementById('ib'+i);if(!el)return;
+    const s=st.idx[i];
+    el.className='idx-box'+(s==='cur'?' cur':s==='u'?' used':'');
+  });
+  document.getElementById('ptval').textContent=st.path;
+  document.getElementById('dcard').className='dcard active';
+  document.getElementById('dc-step').textContent=st.dc.step;
+  const tl=document.getElementById('dc-title');tl.textContent=st.dc.title;tl.className='dc-title '+(st.dc.cls||'');
+  document.getElementById('dc-why').textContent=st.dc.why;
+  document.getElementById('msg').textContent=st.msg.t;
+  document.getElementById('msgicon').textContent=st.msg.i;
+  const cp=document.getElementById('collpills');cp.innerHTML='';
+  collected.forEach(c=>{const p=document.createElement('span');p.className='cpill';p.textContent=c;cp.appendChild(p);});
+  if(st.final){const s=document.createElement('div');s.style.cssText='margin-top:5px;font-size:10px;color:#56D364;width:100%';s.textContent='✓ 8 subsets  |  har node pe sirf ek sawaal';cp.after(s);}
+  document.getElementById('pf').style.width=(cur/TOT*100)+'%';
+  document.getElementById('sc').textContent=cur+' / '+TOT;
+  document.getElementById('pb').disabled=cur===0;
+  document.getElementById('nb').disabled=cur===TOT;
+}
+
+window.go=function(d){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('ab').textContent='▶ auto';}
+  const nx=cur+d;if(nx<0||nx>TOT)return;
+  if(d>0&&S[nx].addcoll)collected.push(S[nx].addcoll);
+  if(d<0&&S[cur].addcoll){const i=collected.lastIndexOf(S[cur].addcoll);if(i>=0)collected.splice(i,1);}
+  cur=nx;render();
+};
+window.autop=function(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('ab').textContent='▶ auto';return;}
+  document.getElementById('ab').textContent='■ stop';
+  autoTimer=setInterval(()=>{if(cur>=TOT){clearInterval(autoTimer);autoTimer=null;document.getElementById('ab').textContent='▶ auto';return;}window.go(1);},1300);
+};
+window.reset=function(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+  document.getElementById('ab').textContent='▶ auto';
+  cur=0;collected=[];render();
+};
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')window.go(1);if(e.key==='ArrowLeft')window.go(-1);});
+render();
+})();
+</script>
+</body>
+</html>
